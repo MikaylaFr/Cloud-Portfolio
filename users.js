@@ -111,7 +111,8 @@ function registration(token){
                 }
                 else{
                     results[0].map(ds.fromDatastore)
-                    resolve(results[0].id)
+                    console.log(results[0])
+                    resolve(results[0][0].id)
                 }
             },()=>{console.log("Couldnt search datastore");reject()})
         })
