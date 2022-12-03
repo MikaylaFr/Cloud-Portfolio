@@ -2,15 +2,16 @@ const express = require('express');
 const app = express();
 const axios = require('axios');
 const router = express.Router();
-const {Datastore} = require('@google-cloud/datastore');
 const path = require('path');
 const { request } = require('http');
-const datastore = new Datastore();
+const ds = require('./datastore');
+const datastore = ds.datastore;
 const bodyParser = require('body-parser');
 const { json } = require('express');
 app.use(bodyParser.json());
 const {OAuth2Client} = require('google-auth-library');
 const { error } = require('console');
+const { resolve } = require('path');
 
 const client_id = "1085852629063-4dae7p2vqovotaigtmijp79efgc5nton.apps.googleusercontent.com";
 const client_secret = "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";
@@ -87,6 +88,41 @@ function get_token(params){
     })
 }
 
+function registration(token){
+    let add_user = (sub) =>{
+        return new Promise((resolve, reject)=>{
+            var key = datastore.key(USERS);
+            var new_user = {"oauth_id": sub};
+            datastore.save({"key": key, "data": new_user}).then(()=>{
+                console.log("Key" + key.id)
+                resolve(key.id)
+            }, ()=>{console.log("Couldnt save new user"); reject()})
+        })
+    } 
+
+    return new Promise((resolve, reject)=>{
+        verifyJwt(token).then((sub)=>{
+            const query = datastore.createQuery(USERS)
+            .filter('oauth_id', '=', sub)
+            datastore.runQuery(query).then((results)=>{
+                console.log(JSON.stringify(results))
+                if(results[0] === undefined || results[0] === null || results[0].length === 0){
+                    add_user(sub).then((id)=>{resolve(id)})
+                }
+                else{
+                    results[0].map(ds.fromDatastore)
+                    resolve(results[0].id)
+                }
+            },()=>{console.log("Couldnt search datastore");reject()})
+        })
+    })
+    
+}
+
+function get_users(){
+
+}
+
 /* ------------- End OAuth Functions ------------- */
 /* ------------- Begin OAuth Controller Functions ------------- */
 
@@ -103,9 +139,12 @@ router.route('/oauth')
         }
         else if(req.query.state!==undefined){
             get_token(req.query).then((resp)=>{
-                res.set('Content-Type', 'text/html');
-                let send_str = '<h2> Your JWT: ' + resp.id_token + '<h2>';
+                registration(resp.id_token).then((user_id)=>{
+                    res.set('Content-Type', 'text/html');
+                let send_str = '<h2> Your JWT: ' + resp.id_token + '</h2>'
+                + '<h2> Your User_Id: ' + user_id + '</h2>';
                 res.send(send_str);
+                })
             },(err)=>{console.log("Something wrong")})
         }
         else{
@@ -113,6 +152,17 @@ router.route('/oauth')
             console.log(req.query)
         }
     });
+
+router.route('/users')
+    .get((req, res)=>{
+        get_users().then((list)=>{
+            res.status(200).send(list)
+        })
+        
+    })
+    .all((req, res)=>{
+        res.status(405).end()
+    })
 /* ------------- End OAuth Controller Functions ------------- */
 exports.router = router
 exports.verifyJwt = verifyJwt
