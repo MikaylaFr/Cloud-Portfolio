@@ -48,6 +48,7 @@ function get_boat(boat_id, req, user_id){
     })
 }
 
+// TODO: Delete from loads
 function delete_boat(boat_id, user_id){
     const key = datastore.key([BOATS, parseInt(boat_id, 10)]);
     var check_boat_exists = new Promise((resolve, reject)=>{
@@ -71,6 +72,31 @@ function delete_boat(boat_id, user_id){
         }, (err)=>{reject(err)})
     })
 }
+
+function patch_boat(boat_id, user_id, body, req){
+    //Get boat - Will check user id and if boat exists
+    let update_val = (passed_val, saved_val)=>{
+        if(passed_val === undefined) return saved_val;
+        return passed_val
+    }
+    return new Promise((resolve, reject)=>{
+        get_boat(boat_id, req, user_id).then((boat)=>{
+            let updated_boat = {
+                "length":update_val(body.length,boat.length),
+                "name":update_val(body.name,boat.name),
+                "owner":boat.owner,
+                "type":update_val(body.type,boat.type),
+            }
+            var key = datastore.key([BOATS, parseInt(boat_id, 10)]);
+            datastore.update({"key": key, "data": updated_boat}).then(()=>{
+                boat.length = updated_boat.length;
+                boat.name = updated_boat.name;
+                boat.type = updated_boat.type;
+                resolve(boat);
+            },()=>{reject(500)})
+        },(err)=>{reject(err)})
+    })
+}
 /* ------------- End Boats Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
@@ -80,6 +106,9 @@ router.route("/")
         },(err)=>{
             res.status(err).json(errors.err_message[err]);
         })
+    })
+    .all((req, res)=>{
+        res.status(405).end()
     })
 
 router.route("/:boat_id")
@@ -96,6 +125,16 @@ router.route("/:boat_id")
         }, (err) => {
             res.status(err).json(errors.err_message[err]);
         })
+    })
+    .patch(errors.check_406, errors.check_415, errors.check_jwt, (req, res)=>{
+        patch_boat(req.params.boat_id, req.oauth_id, req.body, req).then((boat)=>{
+            res.status(200).json(boat); 
+        },(err)=>{
+            res.status(err).json(errors.err_message[err]);
+        })
+    })
+    .all((req, res)=>{
+        res.status(405).end()
     })
 /* ------------- End Controller Functions ------------- */
 exports.boats = BOATS

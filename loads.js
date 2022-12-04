@@ -83,6 +83,9 @@ router.route("/")
             res.status(err).json(errors.err_message[err]);
         })
     })
+    .all((req, res)=>{
+        res.status(405).end()
+    })
 
 router.route("/:load_id")
     .get(errors.check_406, errors.check_jwt, (req, res)=>{
@@ -98,6 +101,9 @@ router.route("/:load_id")
         }, (err) => {
             res.status(err).json(errors.err_message[err]);
         })
+    })
+    .all((req, res)=>{
+        res.status(405).end()
     })
 /* ------------- End Controller Functions ------------- */
 exports.loads = LOADS
