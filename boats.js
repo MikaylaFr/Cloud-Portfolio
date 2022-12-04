@@ -54,6 +54,8 @@ function delete_boat(boat_id, user_id){
         datastore.get(key).then((entity)=>{
             if(entity[0] === undefined || entity[0] === null){
                 reject(404);
+            } else if(entity[0].owner !== user_id){
+                reject(403)
             } else {
                 resolve();
             }
