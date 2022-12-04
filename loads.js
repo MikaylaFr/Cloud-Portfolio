@@ -50,6 +50,29 @@ function get_load(load_id, req, user_id){
         }, ()=>{reject(500); console.log("Couldnt get from datastore")})
     })
 }
+function delete_load(load_id, user_id){
+    const key = datastore.key([LOADS, parseInt(load_id, 10)]);
+    var check_load_exists = new Promise((resolve, reject)=>{
+        datastore.get(key).then((entity)=>{
+            if(entity[0] === undefined || entity[0] === null){
+                reject(404);
+            } else if(entity[0].owner !== user_id){
+                reject(403)
+            } else {
+                resolve();
+            }
+        }, ()=>{
+            reject(500); console.log("Couldnt get from datastore");
+        })
+    })
+
+    return new Promise((resolve, reject)=>{
+        check_load_exists.then(()=>{
+            datastore.delete(key);
+            resolve();
+        }, (err)=>{reject(err)})
+    })
+}
 /* ------------- End Loads Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
@@ -66,6 +89,13 @@ router.route("/:load_id")
         get_load(req.params.load_id, req, req.oauth_id).then((load)=>{
            res.status(200).json(load); 
         },(err)=>{
+            res.status(err).json(errors.err_message[err]);
+        })
+    })
+    .delete(errors.check_jwt, (req, res)=>{
+        delete_load(req.params.load_id, req.oauth_id).then(() => {
+            res.status(204).end();
+        }, (err) => {
             res.status(err).json(errors.err_message[err]);
         })
     })
