@@ -105,13 +105,11 @@ function registration(token){
             const query = datastore.createQuery(USERS)
             .filter('oauth_id', '=', sub)
             datastore.runQuery(query).then((results)=>{
-                console.log(JSON.stringify(results))
                 if(results[0] === undefined || results[0] === null || results[0].length === 0){
                     add_user(sub).then((id)=>{resolve(id)})
                 }
                 else{
                     results[0].map(ds.fromDatastore)
-                    console.log(results[0])
                     resolve(results[0][0].id)
                 }
             },()=>{console.log("Couldnt search datastore");reject()})
@@ -121,7 +119,10 @@ function registration(token){
 }
 
 function get_users(){
-
+    const query = datastore.createQuery(USERS);
+    return datastore.runQuery(query).then((entities) => {
+        return entities[0].map(ds.fromDatastore);
+    })
 }
 
 /* ------------- End OAuth Functions ------------- */
@@ -159,7 +160,6 @@ router.route('/users')
         get_users().then((list)=>{
             res.status(200).send(list)
         })
-        
     })
     .all((req, res)=>{
         res.status(405).end()
@@ -167,4 +167,3 @@ router.route('/users')
 /* ------------- End OAuth Controller Functions ------------- */
 exports.router = router
 exports.verifyJwt = verifyJwt
-exports.users = USERS
