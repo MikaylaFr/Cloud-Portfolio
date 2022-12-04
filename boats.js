@@ -38,7 +38,7 @@ function get_boat(boat_id, req, user_id, internal){
         datastore.get(key).then((entity)=>{
             if(entity[0] === undefined || entity[0] === null){
                 reject(404);
-            } else if(entity[0].owner !== user_id){
+            } else if(internal===false && entity[0].owner !== user_id){
                 reject(403)
             } else {
                 entity.map(ds.fromDatastore)
@@ -80,7 +80,7 @@ function patch_boat(boat_id, user_id, body, req){
         return passed_val
     }
     return new Promise((resolve, reject)=>{
-        get_boat(boat_id, req, user_id).then((boat)=>{
+        get_boat(boat_id, req, user_id, false).then((boat)=>{
             let updated_boat = {
                 "length":update_val(body.length,boat.length),
                 "name":update_val(body.name,boat.name),
@@ -113,7 +113,7 @@ router.route("/")
 
 router.route("/:boat_id")
     .get(errors.check_406, errors.check_jwt, (req, res)=>{
-        get_boat(req.params.boat_id, req, req.oauth_id).then((boat)=>{
+        get_boat(req.params.boat_id, req, req.oauth_id, false).then((boat)=>{
            res.status(200).json(boat); 
         },(err)=>{
             res.status(err).json(errors.err_message[err]);
@@ -139,3 +139,4 @@ router.route("/:boat_id")
 /* ------------- End Controller Functions ------------- */
 exports.boats = BOATS
 exports.router = router
+exports.get_boat = get_boat

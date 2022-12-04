@@ -1,5 +1,5 @@
-const users = require('./users');
 const errors = require('./errors');
+const boats = require('./boats')
 const express = require('express');
 const bodyParser = require('body-parser');
 const router = express.Router();
@@ -70,13 +70,13 @@ function delete_load(load_id, user_id){
     })
 }
 
-function patch_load(load_id, user_id, body, req, carrier_change){
+function patch_load(load_id, body, req, carrier_change){
     let update_val = (passed_val, saved_val)=>{
         if(passed_val === undefined) return saved_val;
         return passed_val
     }
     return new Promise((resolve, reject)=>{
-        get_load(load_id,req,user_id).then((load)=>{
+        get_load(load_id,req).then((load)=>{
             let updated_load = {
                 "volume":update_val(body.volume,load.volume),
                 "item":update_val(body.item, load.item),
@@ -97,6 +97,23 @@ function patch_load(load_id, user_id, body, req, carrier_change){
         },(err)=>{reject(err)})
     })
 }
+
+function assign_load(boat_id,load_id,req,remove){
+    return new Promise((resolve, reject)=>{
+        boats.get_boat(boat_id,req,null,true)
+        .then(()=>{
+            if(remove===false){
+                let update_carrier = {"carrier":boat_id}
+            } else {
+                let update_carrier = {"carrier":null}
+            }
+            patch_load(load_id,update_carrier,req,true).then(()=>{
+                resolve()
+            },(err)=>{console.log("load");reject(err)})
+        }).catch((err)=>{console.log("boat");reject(err)})
+    })
+}
+
 /* ------------- End Loads Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
@@ -104,12 +121,13 @@ router.route("/")
         post_load(req.oauth_id, req.body, req).then((new_load)=>{
             res.status(201).json(new_load)
         },(err)=>{
+            console.log(err)
             res.status(err).json(errors.err_message[err]);
         })
     })
     .all((req, res)=>{
         res.status(405).end()
-    })
+    });
 
 router.route("/:load_id")
     .get(errors.check_406, (req, res)=>{
@@ -135,7 +153,22 @@ router.route("/:load_id")
     })
     .all((req, res)=>{
         res.status(405).end()
+    });
+
+router.route("/:load_id/boats/:boat_id")
+    .put(errors.check_jwt, (req, res)=>{
+        assign_load(req.params.boat_id, req.params.load_id,req).then(()=>{
+            res.status(204).end()
+        },(err)=>{
+            res.status(err).json(errors.err_message[err]);
+        })
     })
+    .delete((req, res)=>{
+
+    })
+    .all((req, res)=>{
+        res.status(405).end()
+    });
 /* ------------- End Controller Functions ------------- */
 exports.loads = LOADS
 exports.router = router
