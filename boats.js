@@ -91,7 +91,7 @@ router.route("/:boat_id")
         })
     })
     .delete(errors.check_jwt, (req, res)=>{
-        delete_boat(req.params.boat_id).then(() => {
+        delete_boat(req.params.boat_id, req.oauth_id).then(() => {
             res.status(204).end();
         }, (err) => {
             res.status(err).json(errors.err_message[err]);
