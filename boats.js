@@ -31,7 +31,8 @@ function post_boat(user_id, req_body, req){
     })
 }
 
-function get_boat(boat_id, req, user_id){
+//TODO display loads
+function get_boat(boat_id, req, user_id, internal){
     return new Promise((resolve, reject)=>{
         const key = datastore.key([BOATS, parseInt(boat_id, 10)]);
         datastore.get(key).then((entity)=>{
@@ -74,7 +75,6 @@ function delete_boat(boat_id, user_id){
 }
 
 function patch_boat(boat_id, user_id, body, req){
-    //Get boat - Will check user id and if boat exists
     let update_val = (passed_val, saved_val)=>{
         if(passed_val === undefined) return saved_val;
         return passed_val

@@ -34,14 +34,12 @@ function post_load(user_id, req_body, req){
     })
 }
 
-function get_load(load_id, req, user_id){
+function get_load(load_id, req){
     return new Promise((resolve, reject)=>{
         const key = datastore.key([LOADS, parseInt(load_id, 10)]);
         datastore.get(key).then((entity)=>{
             if(entity[0] === undefined || entity[0] === null){
                 reject(404);
-            } else if(entity[0].owner !== user_id){
-                reject(403)
             } else {
                 entity.map(ds.fromDatastore)
                 if(req) entity[0].self = req.protocol + "://" + req.get("host") + req.baseUrl + "/" + entity[0].id;
@@ -56,8 +54,6 @@ function delete_load(load_id, user_id){
         datastore.get(key).then((entity)=>{
             if(entity[0] === undefined || entity[0] === null){
                 reject(404);
-            } else if(entity[0].owner !== user_id){
-                reject(403)
             } else {
                 resolve();
             }
@@ -73,10 +69,38 @@ function delete_load(load_id, user_id){
         }, (err)=>{reject(err)})
     })
 }
+
+function patch_load(load_id, user_id, body, req, carrier_change){
+    let update_val = (passed_val, saved_val)=>{
+        if(passed_val === undefined) return saved_val;
+        return passed_val
+    }
+    return new Promise((resolve, reject)=>{
+        get_load(load_id,req,user_id).then((load)=>{
+            let updated_load = {
+                "volume":update_val(body.volume,load.volume),
+                "item":update_val(body.item, load.item),
+                "creation_date":update_val(body.creation_date,load.creation_date),
+                "carrier":load.carrier
+            };
+            if(carrier_change === true){
+                updated_load.carrier = body.carrier;
+            }
+            var key = datastore.key([LOADS, parseInt(load_id, 10)]);
+            datastore.update({"key": key, "data": updated_load}).then(()=>{
+                load.volume = updated_load.volume;
+                load.item = updated_load.item;
+                load.creation_date = updated_load.creation_date;
+                load.carrier = updated_load.carrier;
+                resolve(load);
+            },()=>{reject(500)})
+        },(err)=>{reject(err)})
+    })
+}
 /* ------------- End Loads Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
-    .post(errors.check_415, errors.check_406, errors.check_jwt, (req, res)=>{
+    .post(errors.check_415, errors.check_406, (req, res)=>{
         post_load(req.oauth_id, req.body, req).then((new_load)=>{
             res.status(201).json(new_load)
         },(err)=>{
@@ -88,17 +112,24 @@ router.route("/")
     })
 
 router.route("/:load_id")
-    .get(errors.check_406, errors.check_jwt, (req, res)=>{
+    .get(errors.check_406, (req, res)=>{
         get_load(req.params.load_id, req, req.oauth_id).then((load)=>{
            res.status(200).json(load); 
         },(err)=>{
             res.status(err).json(errors.err_message[err]);
         })
     })
-    .delete(errors.check_jwt, (req, res)=>{
+    .delete((req, res)=>{
         delete_load(req.params.load_id, req.oauth_id).then(() => {
             res.status(204).end();
         }, (err) => {
+            res.status(err).json(errors.err_message[err]);
+        })
+    })
+    .patch(errors.check_406, errors.check_415, (req, res)=>{
+        patch_load(req.params.load_id, req.oauth_id, req.body, req, false).then((boat)=>{
+            res.status(200).json(boat); 
+        },(err)=>{
             res.status(err).json(errors.err_message[err]);
         })
     })
