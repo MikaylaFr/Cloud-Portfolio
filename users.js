@@ -94,7 +94,6 @@ function registration(token){
             var key = datastore.key(USERS);
             var new_user = {"oauth_id": sub};
             datastore.save({"key": key, "data": new_user}).then(()=>{
-                console.log("Key" + key.id)
                 resolve(key.id)
             }, ()=>{console.log("Couldnt save new user"); reject()})
         })
