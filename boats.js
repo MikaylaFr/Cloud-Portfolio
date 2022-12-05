@@ -7,6 +7,7 @@ const ds = require('./datastore');
 const datastore = ds.datastore;
 router.use(bodyParser.json());
 const BOATS = "Boats";
+var util = require('util');
 
 /* ------------- Begin Boats Model Functions ------------- */
 function post_boat(user_id, req_body, req){
@@ -50,14 +51,17 @@ function get_boat(boat_id, req, user_id, internal){
         datastore.get(key).then((entity)=>{
             if(entity[0] === undefined || entity[0] === null){
                 reject(404);
-            } else if(internal===false && entity[0].owner !== user_id){
+            } else if(!internal && entity[0].owner !== user_id){
                 reject(403)
             } else {
                 entity.map(ds.fromDatastore)
-                if(req) entity[0].self = req.protocol + "://" + req.get("host") + req.baseUrl + "/" + entity[0].id;
-                if(internal === false){
-                    get_loads.then((loads)=>{
-                        entity[0].loads = loads;
+                entity[0].loads = [];
+                entity[0].self = req.protocol + "://" + req.get("host") + req.baseUrl + "/" + entity[0].id;
+                if(!internal){
+                    get_loads.then((curr_loads)=>{
+                        if(curr_loads !== null){
+                            entity[0].loads = curr_loads;
+                        }
                         resolve(entity[0]);
                     })
                 }else{
@@ -128,12 +132,70 @@ function put_boat(boat_id, user_id, req_body, req){
         }
     })
 }
+
+function get_all_boats(user_id, req){
+    results = {};
+    
+    let get_users_boats_count = new Promise((resolve, reject)=>{
+        const query = datastore.createQuery(BOATS)
+            .filter('owner', '=', user_id)
+            .select('__key__');
+        datastore.runQuery(query).then((keys)=>{
+            results.total_items = keys[0].length;
+            resolve();
+        },()=>{console.log("Couldnt get boats");reject(500)})
+    })
+
+    let get_users_boats_pagination = new Promise((resolve, reject)=>{
+        get_users_boats_count.then(()=>{
+            var query = datastore.createQuery(BOATS)
+            .filter('owner', '=', user_id)
+            .select('__key__')
+            .limit(5);
+            if(Object.keys(req.query).includes("cursor")){
+                cursor = decodeURIComponent(req.query.cursor);
+                query = query.start(cursor);
+                
+            }
+            datastore.runQuery(query).then((entities) => {
+                if(entities[0].length > 0){
+                    entities[0].map(ds.fromDatastore);
+                }
+                if(entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS){
+                    console.log("endCursor: " + JSON.stringify(entities[1]));
+                    results.next = req.protocol + "://" + req.get("host") + req.baseUrl + "?cursor=" + encodeURIComponent(entities[1].endCursor);
+                }
+                resolve(entities[0]);
+            }, (err) => {console.log("Something went wrong getting keys\n" + err); reject(500)});
+        },(err)=>{reject(err)})
+    })
+
+    return new Promise((resolve, reject)=>{
+        get_users_boats_pagination.then((keys)=>{
+            let all_boats = [];
+            keys.forEach((curr_key) => {
+                all_boats.push(get_boat(curr_key.id, req, user_id, false))
+            });
+            Promise.all(all_boats).then((boats_info) => {
+                results.boats = boats_info;
+                resolve(results)})
+        },(err)=>{reject(err)})
+    })
+
+}
 /* ------------- End Boats Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
     .post(errors.check_415, errors.check_406, errors.check_jwt, (req, res)=>{
         post_boat(req.oauth_id, req.body, req).then((new_boat)=>{
             res.status(201).json(new_boat)
+        },(err)=>{
+            res.status(err).json(errors.err_message[err]);
+        })
+    })
+    .get(errors.check_406, errors.check_jwt, (req, res)=>{
+        get_all_boats(req.oauth_id, req).then((boat)=>{
+           res.status(200).json(boat); 
         },(err)=>{
             res.status(err).json(errors.err_message[err]);
         })
