@@ -113,6 +113,18 @@ function assign_load(boat_id,load_id,req,remove){
     })
 }
 
+function put_load(load_id, req_body, req){
+    return new Promise((resolve, reject)=>{
+        if(req_body.volume === undefined || req_body.item === undefined || req_body.creation_date === undefined){
+            reject(400);
+        } else {
+            patch_load(load_id, req_body, req, false).then((load)=>{
+                resolve(load)
+            },(err)=>{reject(err)})
+        }
+    })
+}
+
 /* ------------- End Loads Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
@@ -144,8 +156,15 @@ router.route("/:load_id")
         })
     })
     .patch(errors.check_406, errors.check_415, (req, res)=>{
-        patch_load(req.params.load_id, req.body, req, false).then((boat)=>{
-            res.status(200).json(boat); 
+        patch_load(req.params.load_id, req.body, req, false).then((load)=>{
+            res.status(200).json(load); 
+        },(err)=>{
+            res.status(err).json(errors.err_message[err]);
+        })
+    })
+    .put(errors.check_406, errors.check_415, (req, res)=>{
+        put_load(req.params.load_id, req.body, req).then((load)=>{
+            res.status(200).json(load); 
         },(err)=>{
             res.status(err).json(errors.err_message[err]);
         })
