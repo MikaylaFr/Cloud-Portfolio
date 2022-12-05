@@ -102,15 +102,14 @@ function assign_load(boat_id,load_id,req,remove){
     return new Promise((resolve, reject)=>{
         boats.get_boat(boat_id,req,null,true)
         .then(()=>{
+            let update_carrier = {"carrier":null}
             if(remove===false){
-                let update_carrier = {"carrier":boat_id}
-            } else {
-                let update_carrier = {"carrier":null}
+                update_carrier.carrier = boat_id;
             }
             patch_load(load_id,update_carrier,req,true).then(()=>{
                 resolve()
-            },(err)=>{console.log("load");reject(err)})
-        }).catch((err)=>{console.log("boat");reject(err)})
+            },(err)=>{reject(err)})
+        }).catch((err)=>{reject(err)})
     })
 }
 
@@ -157,14 +156,18 @@ router.route("/:load_id")
 
 router.route("/:load_id/boats/:boat_id")
     .put(errors.check_jwt, (req, res)=>{
-        assign_load(req.params.boat_id, req.params.load_id,req).then(()=>{
+        assign_load(req.params.boat_id, req.params.load_id,req, false).then(()=>{
             res.status(204).end()
         },(err)=>{
             res.status(err).json(errors.err_message[err]);
         })
     })
     .delete((req, res)=>{
-
+        assign_load(req.params.boat_id, req.params.load_id,req, true).then(()=>{
+            res.status(204).end()
+        },(err)=>{
+            res.status(err).json(errors.err_message[err]);
+        })
     })
     .all((req, res)=>{
         res.status(405).end()
