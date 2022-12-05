@@ -11,7 +11,7 @@ const LOADS = "Loads";
 let err_message = {"Error": null};
 
 /* ------------- Begin Loads Model Functions ------------- */
-function post_load(user_id, req_body, req){
+function post_load(req_body, req){
     return new Promise((resolve, reject)=>{
         if(req_body.volume === undefined || req_body.item === undefined || req_body.creation_date === undefined){
             reject(400);
@@ -22,7 +22,6 @@ function post_load(user_id, req_body, req){
                 "item": req_body.item,
                 "creation_date": req_body.creation_date,
                 "carrier": null,
-                "owner": user_id
             }
             datastore.save({"key": key, "data": new_load})
             .then(()=>{
@@ -48,7 +47,7 @@ function get_load(load_id, req){
         }, ()=>{reject(500); console.log("Couldnt get from datastore")})
     })
 }
-function delete_load(load_id, user_id){
+function delete_load(load_id){
     const key = datastore.key([LOADS, parseInt(load_id, 10)]);
     var check_load_exists = new Promise((resolve, reject)=>{
         datastore.get(key).then((entity)=>{
@@ -129,7 +128,7 @@ function put_load(load_id, req_body, req){
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
     .post(errors.check_415, errors.check_406, (req, res)=>{
-        post_load(req.oauth_id, req.body, req).then((new_load)=>{
+        post_load(req.body, req).then((new_load)=>{
             res.status(201).json(new_load)
         },(err)=>{
             console.log(err)

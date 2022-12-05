@@ -31,7 +31,7 @@ const check_jwt = async function (req, res, next){
         let auth = req.headers.authorization;
         let token = auth.split(' ');
         users.verifyJwt(token[1]).then((oauth_id)=>{
-            req.oauth_id = oauth_id;
+            req.oauth_id = oauth_id[0];
             next()
         },()=>{res.status(401).json(err_message[401])})
     } catch {

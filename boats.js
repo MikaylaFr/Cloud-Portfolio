@@ -1,5 +1,5 @@
-const users = require('./users');
 const errors = require('./errors');
+const loads = require('./loads');
 const express = require('express');
 const bodyParser = require('body-parser');
 const router = express.Router();
@@ -31,8 +31,20 @@ function post_boat(user_id, req_body, req){
     })
 }
 
-//TODO display loads
 function get_boat(boat_id, req, user_id, internal){
+    let get_loads = new Promise((resolve, reject)=>{
+        let query = datastore.createQuery(loads.loads)
+        .filter('carrier','=',boat_id)
+        datastore.runQuery(query).then((results)=>{
+            if(results[0][0] !== undefined && results[0][0] !== null){
+                results[0].map(ds.fromDatastore)
+                for(var i=0;i<results[0].length;i++){
+                    results[0][i].self = req.protocol + "://" + req.get("host") + "/loads/" + results[0][i].id;
+                }
+            }
+            resolve(results[0]);
+        },(err)=>{console.log("Couldnt run query for loads");reject(err)})
+    })
     return new Promise((resolve, reject)=>{
         const key = datastore.key([BOATS, parseInt(boat_id, 10)]);
         datastore.get(key).then((entity)=>{
@@ -43,7 +55,14 @@ function get_boat(boat_id, req, user_id, internal){
             } else {
                 entity.map(ds.fromDatastore)
                 if(req) entity[0].self = req.protocol + "://" + req.get("host") + req.baseUrl + "/" + entity[0].id;
-                resolve(entity[0]);
+                if(internal === false){
+                    get_loads.then((loads)=>{
+                        entity[0].loads = loads;
+                        resolve(entity[0]);
+                    })
+                }else{
+                    resolve(entity[0]);
+                }
             }
         }, ()=>{reject(500); console.log("Couldnt get from datastore")})
     })

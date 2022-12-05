@@ -27,7 +27,8 @@ async function verifyJwt(token) {
         audience: client_id
     })
     let payload = ticket.getPayload();
-    return payload['sub'];
+    let return_payload = [payload['sub'], payload['name']]
+    return return_payload;
 }
 
 /* ------------- Begin OAuth Functions ------------- */
@@ -89,10 +90,10 @@ function get_token(params){
 }
 
 function registration(token){
-    let add_user = (sub) =>{
+    let add_user = (sub, name) =>{
         return new Promise((resolve, reject)=>{
             var key = datastore.key(USERS);
-            var new_user = {"oauth_id": sub};
+            var new_user = {"oauth_id": sub, "name": name};
             datastore.save({"key": key, "data": new_user}).then(()=>{
                 resolve(key.id)
             }, ()=>{console.log("Couldnt save new user"); reject()})
@@ -100,12 +101,14 @@ function registration(token){
     } 
 
     return new Promise((resolve, reject)=>{
-        verifyJwt(token).then((sub)=>{
+        verifyJwt(token).then((curr_user)=>{
+            let sub = curr_user[0];
+            let name = curr_user[1];
             const query = datastore.createQuery(USERS)
             .filter('oauth_id', '=', sub)
             datastore.runQuery(query).then((results)=>{
                 if(results[0] === undefined || results[0] === null || results[0].length === 0){
-                    add_user(sub).then((id)=>{resolve(id)})
+                    add_user(sub, name).then((id)=>{resolve(id)})
                 }
                 else{
                     results[0].map(ds.fromDatastore)
