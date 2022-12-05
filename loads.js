@@ -144,7 +144,7 @@ router.route("/:load_id")
         })
     })
     .patch(errors.check_406, errors.check_415, (req, res)=>{
-        patch_load(req.params.load_id, req.oauth_id, req.body, req, false).then((boat)=>{
+        patch_load(req.params.load_id, req.body, req, false).then((boat)=>{
             res.status(200).json(boat); 
         },(err)=>{
             res.status(err).json(errors.err_message[err]);

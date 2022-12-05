@@ -97,6 +97,18 @@ function patch_boat(boat_id, user_id, body, req){
         },(err)=>{reject(err)})
     })
 }
+
+function put_boat(boat_id, user_id, req_body, req){
+    return new Promise((resolve, reject)=>{
+        if(req_body.name === undefined || req_body.type === undefined || req_body.length === undefined){
+            reject(400);
+        } else {
+            patch_boat(boat_id, user_id, req_body, req).then((boat)=>{
+                resolve(boat)
+            },(err)=>{reject(err)})
+        }
+    })
+}
 /* ------------- End Boats Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
@@ -128,6 +140,13 @@ router.route("/:boat_id")
     })
     .patch(errors.check_406, errors.check_415, errors.check_jwt, (req, res)=>{
         patch_boat(req.params.boat_id, req.oauth_id, req.body, req).then((boat)=>{
+            res.status(200).json(boat); 
+        },(err)=>{
+            res.status(err).json(errors.err_message[err]);
+        })
+    })
+    .put(errors.check_406, errors.check_415, errors.check_jwt, (req, res)=>{
+        put_boat(req.params.boat_id, req.oauth_id, req.body, req).then((boat)=>{
             res.status(200).json(boat); 
         },(err)=>{
             res.status(err).json(errors.err_message[err]);
