@@ -154,15 +154,13 @@ function get_all_boats(user_id, req){
             .limit(5);
             if(Object.keys(req.query).includes("cursor")){
                 cursor = decodeURIComponent(req.query.cursor);
-                query = query.start(cursor);
-                
+                query = query.start(cursor);   
             }
             datastore.runQuery(query).then((entities) => {
                 if(entities[0].length > 0){
                     entities[0].map(ds.fromDatastore);
                 }
                 if(entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS){
-                    console.log("endCursor: " + JSON.stringify(entities[1]));
                     results.next = req.protocol + "://" + req.get("host") + req.baseUrl + "?cursor=" + encodeURIComponent(entities[1].endCursor);
                 }
                 resolve(entities[0]);
@@ -181,7 +179,6 @@ function get_all_boats(user_id, req){
                 resolve(results)})
         },(err)=>{reject(err)})
     })
-
 }
 /* ------------- End Boats Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */

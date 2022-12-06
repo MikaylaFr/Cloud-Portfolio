@@ -124,6 +124,47 @@ function put_load(load_id, req_body, req){
     })
 }
 
+function get_all_loads(req){
+    results = {}
+    let get_loads_count = new Promise((resolve, reject)=>{
+        const query = datastore.createQuery(LOADS)
+            .select('__key__');
+        datastore.runQuery(query).then((keys)=>{
+            results.total_items = keys[0].length;
+            resolve();
+        },()=>{console.log("Couldnt get loads");reject(500)})
+    })
+
+    let get_loads = new Promise((resolve, reject)=>{
+        get_loads_count.then(()=>{
+            var query = datastore.createQuery(LOADS).limit(5);
+            if(Object.keys(req.query).includes("cursor")){
+                cursor = decodeURIComponent(req.query.cursor);
+                query = query.start(cursor);   
+            }
+            datastore.runQuery(query).then((entities) => {
+                if(entities[0].length > 0){
+                    entities[0].map(ds.fromDatastore);
+                }
+                if(entities[1].moreResults !== ds.Datastore.NO_MORE_RESULTS){
+                    results.next = req.protocol + "://" + req.get("host") + req.baseUrl + "?cursor=" + encodeURIComponent(entities[1].endCursor);
+                }
+                resolve(entities[0]);
+            }, (err) => {console.log("Something went wrong getting keys\n" + err); reject(500)});
+        },(err)=>{reject(err)})
+    })
+
+    return new Promise((resolve, reject)=>{
+        get_loads.then((loads)=>{
+            loads.forEach((curr_load)=>{
+                curr_load.self = req.protocol + "://" + req.get("host") + req.baseUrl + "/" + curr_load.id;
+            })
+            results.loads = loads;
+            resolve(results);
+        },(err)=>{reject(err)})
+    })
+}
+
 /* ------------- End Loads Model Functions ------------- */
 /* ------------- Begin Controller Functions ------------- */
 router.route("/")
@@ -132,6 +173,13 @@ router.route("/")
             res.status(201).json(new_load)
         },(err)=>{
             console.log(err)
+            res.status(err).json(errors.err_message[err]);
+        })
+    })
+    .get(errors.check_406, (req, res)=>{
+        get_all_loads(req).then((boat)=>{
+           res.status(200).json(boat); 
+        },(err)=>{
             res.status(err).json(errors.err_message[err]);
         })
     })
