@@ -72,8 +72,27 @@ function get_boat(boat_id, req, user_id, internal){
     })
 }
 
-// TODO: Delete from loads
-function delete_boat(boat_id, user_id){
+function delete_boat(boat_id, user_id, req){
+    let get_load_keys = new Promise((resolve, reject)=>{
+        const query = datastore.createQuery(loads.loads)
+        .filter('carrier','=',boat_id)
+        .select('__key__');
+        datastore.runQuery(query).then((results)=>{
+            results[0].map(ds.fromDatastore)
+            resolve(results[0])
+        },()=>{reject(500)})
+    })
+
+    let get_loads = new Promise((resolve, reject)=>{
+        get_load_keys.then((load_ids)=>{
+            let all_loads = [];
+            load_ids.forEach((curr_load)=>{
+                all_loads.push(loads.assign_load(boat_id,curr_load.id,req,true))
+            })
+            Promise.all(all_loads).then(()=>{resolve()},(err)=>{reject(err)});
+        },(err)=>{reject(err)})
+    })
+
     const key = datastore.key([BOATS, parseInt(boat_id, 10)]);
     var check_boat_exists = new Promise((resolve, reject)=>{
         datastore.get(key).then((entity)=>{
@@ -82,7 +101,9 @@ function delete_boat(boat_id, user_id){
             } else if(entity[0].owner !== user_id){
                 reject(403)
             } else {
-                resolve();
+                get_loads.then(()=>{
+                    resolve()
+                },(err)=>{reject(err)})
             }
         }, ()=>{
             reject(500); console.log("Couldnt get from datastore");
@@ -210,7 +231,7 @@ router.route("/:boat_id")
         })
     })
     .delete(errors.check_jwt, (req, res)=>{
-        delete_boat(req.params.boat_id, req.oauth_id).then(() => {
+        delete_boat(req.params.boat_id, req.oauth_id, req).then(() => {
             res.status(204).end();
         }, (err) => {
             res.status(err).json(errors.err_message[err]);

@@ -221,7 +221,7 @@ router.route("/:load_id")
     });
 
 router.route("/:load_id/boats/:boat_id")
-    .put(errors.check_jwt, (req, res)=>{
+    .put((req, res)=>{
         assign_load(req.params.boat_id, req.params.load_id,req, false).then(()=>{
             res.status(204).end()
         },(err)=>{
@@ -241,3 +241,4 @@ router.route("/:load_id/boats/:boat_id")
 /* ------------- End Controller Functions ------------- */
 exports.loads = LOADS
 exports.router = router
+exports.assign_load = assign_load
