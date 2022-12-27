@@ -13,10 +13,10 @@ const {OAuth2Client} = require('google-auth-library');
 const { error } = require('console');
 const { resolve } = require('path');
 
-const client_id = "1085852629063-4dae7p2vqovotaigtmijp79efgc5nton.apps.googleusercontent.com";
-const client_secret = "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";
-const get_oauth_url = "https://accounts.google.com/o/oauth2/v2/auth";
-const gredirect = "http://localhost:8080/oauth";
+const client_id = "x";
+const client_secret = "x";
+const get_oauth_url = "x";
+const gredirect = "x";
 const USERS = "Users";
 const STATES = "States"
 const client = new OAuth2Client(client_id);
